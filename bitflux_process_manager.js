@@ -1,5 +1,7 @@
 const spawn = require('child_process').spawn;
 
+var xmlrpc_secret = 'bitflux';
+
 //list of services to run in the container
 var services = [
 	{
@@ -10,6 +12,21 @@ var services = [
 		name: 'rethinkdb',
 		command: 'rethinkdb',
 		args: ['--bind', 'all']
+	},{
+		name: 'aria2',
+		command: 'aria2c',
+		args: [   '--max-tries=0',
+                   "--enable-rpc=true",
+                   "--rpc-secret=" + xmlrpc_secret,
+                   "--check-certificate=false",
+                   "--always-resume=false",
+                   "--max-connection-per-server=10",
+                   "--split=1",
+                   "--split=10",
+                   "--stream-piece-selector=inorder",
+                   "--max-concurrent-downloads=10",
+                   "--min-split-size=10M"
+                   ]
 	}
 ];
 
@@ -17,6 +34,7 @@ var services = [
 var serviceProcesses = [];
 
 services.forEach(function(service) {
+	console.log(service.command, service.args);
 	var serviceProcess = spawn(service.command, service.args);
 	serviceProcesses.push(serviceProcess);
 

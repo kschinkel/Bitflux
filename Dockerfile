@@ -15,6 +15,8 @@ RUN yum install -y aria2
 
 RUN mkdir /opt/bitflux
 COPY bitflux_process_manager.js /opt/bitflux/
+COPY src /opt/bitflux/src
+COPY config/nginx.conf /etc/nginx/
 
 CMD ["node","/opt/bitflux/bitflux_process_manager.js"]
 
