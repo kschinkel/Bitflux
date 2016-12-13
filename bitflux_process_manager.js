@@ -8,7 +8,11 @@ var services = [
 		name: 'nginx',
 		command: 'nginx',
 		args: ['-g','daemon off;']
-	}, {
+	},{
+		name: 'bitflux api',
+		command: 'node',
+		args: ['/opt/bitflux/src/backend/bitflux_api.js'], 
+	},{
 		name: 'rethinkdb',
 		command: 'rethinkdb',
 		args: ['--bind', 'all']
