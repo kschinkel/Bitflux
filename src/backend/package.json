@@ -5,6 +5,13 @@
   "private": true,
   "dependencies": {
     "express": "3.x",
-    "moment": "2.17.x"
+    "moment": "2.17.x",
+    "aria2": "3.0.x",
+    "rethinkdbdash": "2.3.x",
+    "xmlrpc": "1.3.x",
+    "q":"1.4.x",
+    "divmod":"0.0.x",
+    "sleep":"5.1.x",
+    "diskspace":"1.0.x"
   }
 }

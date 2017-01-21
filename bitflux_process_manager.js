@@ -10,18 +10,29 @@ var services = [
 		args: ['-g','daemon off;']
 	},{
 		name: 'bitflux api',
-		command: 'node',
-		args: ['/opt/bitflux/src/backend/bitflux_api.js'], 
+		command: 'gosu',
+		args: [   process.env.MOUNT_UID + ":" + process.env.MOUNT_GID, // gosu args
+                   "node",				// cmd for gosu to execute
+                   '/opt/bitflux/src/backend/bitflux_api.js'],
+	},{
+		name: 'bitflux autodl',
+		command: 'gosu',
+		args: [ 	process.env.MOUNT_UID + ":" + process.env.MOUNT_GID, // gosu args
+                   "python",				// cmd for gosu to execute
+                   'autoDL.py'],
+        options: {"cwd":"/opt/bitflux/src/backend/"}
 	},{
 		name: 'rethinkdb',
 		command: 'rethinkdb',
 		args: ['--bind', 'all']
 	},{
 		name: 'aria2',
-		command: 'aria2c',
-		args: [   '--max-tries=0',
+		command: 'gosu',
+		args: [   process.env.MOUNT_UID + ":" + process.env.MOUNT_GID, // gosu args
+                   "aria2c",				// cmd for gosu to execute
+		           "--max-tries=0",
+		           "--rpc-allow-origin-all=true",
                    "--enable-rpc=true",
-                   "--rpc-secret=" + xmlrpc_secret,
                    "--check-certificate=false",
                    "--always-resume=false",
                    "--max-connection-per-server=10",
@@ -39,7 +50,7 @@ var serviceProcesses = [];
 
 services.forEach(function(service) {
 	console.log(service.command, service.args);
-	var serviceProcess = spawn(service.command, service.args);
+	var serviceProcess = spawn(service.command, service.args,service.options);
 	serviceProcesses.push(serviceProcess);
 
 	serviceProcess.stdout.on('data', (data) => {
