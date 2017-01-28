@@ -147,6 +147,14 @@ function saveAria2State(arai2Gid,callback){
 	})
 }
 
+function renumberJobs(){
+  r.table("jobs").orderBy('queue_id').run().then(function(jobs){
+    for ( var i=0; i < jobs.length; i ++){
+      r.table("jobs").get(jobs[i]['id']).update({"queue_id":i,"nid":i}).run();
+    }
+  })
+}
+
 function processQueue(){
 	var maxConcurrentDownloads = 1;
 	console.log("Checking job queue");
@@ -380,6 +388,7 @@ app.post('/',function(req,res){
 							  						deleteIfExists(job['local_basedir'] + "/" + job['filename']);
 							  						deleteIfExists(job['local_basedir'] + "/" + job['tmpfilename']);
 							  					}
+                          renumberJobs();
 							  				}).catch(function(err){
 				  								console.log("Failed to remove job from db");
 				  								console.log(err);			  							
@@ -395,6 +404,7 @@ app.post('/',function(req,res){
 					  						deleteIfExists(job['local_basedir'] + "/" + job['filename']);
 					  						deleteIfExists(job['local_basedir'] + "/" + job['tmpfilename']);
 					  					}
+                      renumberJobs();
 					  				}).catch(function(err){
 		  								console.log("Failed to remove job from db");
 		  								console.log(err);			  							
@@ -409,8 +419,8 @@ app.post('/',function(req,res){
 			  						console.log(job['local_basedir'] + "/" + job['filename']);
 			  						deleteIfExists(job['local_basedir'] + "/" + job['filename']);
 			  						deleteIfExists(job['local_basedir'] + "/" + job['tmpfilename']);
-
 			  					}
+                  renumberJobs();
 	  						}).catch(function(err){
   								console.log("Failed to remove job from db");
   								console.log(err);			  							
