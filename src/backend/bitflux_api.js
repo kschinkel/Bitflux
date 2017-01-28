@@ -321,6 +321,9 @@ app.post('/',function(req,res){
   		console.log("Do some action");
   		if ( 'stop' in req.body ){
   			var stopList = req.body.stop;
+        if ( Number.isInteger(stopList) ){
+          stopList = [stopList];
+        }
   			for ( var i = 0; i < stopList.length; i++){
   				Q.all(r.table("jobs").filter({"nid": parseInt(stopList[i]) }).run()).then(function(jobs){
   						job = jobs[0];
@@ -340,8 +343,12 @@ app.post('/',function(req,res){
   		}
   		if ( 'delete' in req.body ){
   			var delList = req.body.delete;
+        if ( Number.isInteger(delList) ){
+          delList = [delList];
+        }
   			for ( var i= 0 ; i < delList.length; i++ ){
   				Q.all(r.table("jobs").filter({"nid": parseInt(delList[i])}).run().then(function(jobs){
+              console.log("Attempting to delete; " + jobs);
 	  					job = jobs[0];
 	  					if ( job !== undefined && 'pid' in job && job['pid'] !== undefined && job['pid'] != -1 && !(job['pid'] in missingAraiIds) ){ // this was already added to arai2, so we want to do a delete it from aria2 also
 		  					var aria2Proms = [];
@@ -426,11 +433,14 @@ app.post('/',function(req,res){
   		if ( 'start' in req.body ){
   			console.log('Starting some jobs');
   			var startList = req.body.start;
+        if ( Number.isInteger(startList) ){
+          startList = [startList];
+        }
    			for ( var i = 0; i < startList.length; i++){
    				console.log(startList[i]);
   				Q.all(r.table("jobs").filter({"nid": parseInt(startList[i]) }).run()).then(function(jobs){
   						job = jobs[0];		
-	  					startJob(req._rdbConn,job);
+	  					startJob(job);
   				}).catch(function(error){
   					console.log("An error occurred retrieving job from db");
   					console.log(error);
@@ -440,6 +450,9 @@ app.post('/',function(req,res){
   		if ( 'queue' in req.body ){
   			console.log('queuing jobs');
   			var queueList = req.body.queue;
+        if ( Number.isInteger(queueList) ){
+          queueList = [queueList];
+        }
   			for ( var i = 0; i < queueList.length; i++){
    				Q.all(r.table("jobs").filter({"nid": parseInt(queueList[i]) }).update({"status":"queued"}).run()).then(function(ret){
 	  				console.log("Job queued");
@@ -450,6 +463,9 @@ app.post('/',function(req,res){
   				})		
   			}
   		}
+      if ( 'cleanup' in req.body ){
+        r.table("jobs").filter({"status": "complete" }).delete().run();
+      }
 
 	}else{
 		console.log("do something else");
