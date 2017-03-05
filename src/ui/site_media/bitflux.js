@@ -216,7 +216,7 @@ updateDisplay = function() {
 };
 
 aNewDL = function(action){
-	var postData = "newDL&" +action+"&URL=" +escape(newDLBar.items.get(0).getValue());
+	var postData = "newDL&" +action+"&URL=" +encodeURIComponent(newDLBar.items.get(0).getValue());
     postData += "&withAutoRename=" + Ext.getCmp('autoRenameChkBox').getValue();
 	Ext.getCmp('newDLtxtField').setValue("");
 	Ext.Ajax.request({

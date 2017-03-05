@@ -8,7 +8,9 @@ var path = require("path");
 var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
 var Aria2 = require('aria2');
-//var r = require('rethinkdb');
+var request = require('request');
+var cheerio = require('cheerio');
+var path = require('path');
 
 var xmlrpc = require('xmlrpc');
 var Q = require('q');
@@ -26,6 +28,7 @@ sleep.sleep(10);
 var r = require('rethinkdbdash')(rethinkdbOptions);
 
 var hiddenBaseDir = "/downloads";
+var fileExtensions = ["mkv","mp3","avi","mp4","mpg","rar","zip","nfo","sfv"];
 
 var aria2Options = {
   host: 'localhost',
@@ -264,6 +267,47 @@ function addNewJob(new_job,dbConn,callback){
       typeof callback === 'function' && callback(error,"failed to add new job");
     })
 }
+
+var newDLRequest = function(urlStr,filename,withAutoRename,dl_dir,status,dbConn,callback){
+	var parsed = url.parse(urlStr);
+	if ( filename == null ){
+		filename = querystring.unescape(path.basename(parsed.pathname));
+	}
+	console.log("filename:" + filename);
+    var new_job = {};
+    new_job['autorename'] = withAutoRename;
+    new_job['filename'] = filename;;
+    console.log("download dir; " + dl_dir);
+    if ( dl_dir === undefined || dl_dir == ''){
+        dl_dir = '/';
+    }
+    new_job['local_basedir'] = hiddenBaseDir + dl_dir
+    new_job['status'] = status
+    new_job['url'] = urlStr
+    new_job['totalLength'] = 0 //temp
+    new_job['tmpfilename'] = new_job["filename"] + ".aria2"
+    if ( withAutoRename == true || withAutoRename == 'true' ){
+		exec("python file_stats.py " + '"' + filename + '"',{"cwd":"/opt/bitflux/src/backend"}, function(error,stdout,stderr){
+			filenameMatch = stdout.match(/^Filename: (.*)$/m);
+			if ( filenameMatch != null){
+				new_job['filename'] = filenameMatch[1];
+				new_job['tmpfilename'] = new_job["filename"] + ".aria2"
+			}else{
+				console.log("could not rename show");
+			}
+			console.log(stdout);
+			console.log(stderr);
+			addNewJob(new_job,dbConn,function(error,msg){
+				callback(msg);
+			});
+			//console.log(stdout.substring(loc,-1));
+		})
+    }else{
+        addNewJob(new_job,dbConn,function(error,msg){
+          callback(msg);
+        });
+    }
+}
 app.post('/',function(req,res){
 	console.log(req.body);
 	res.setHeader('Content-Type', 'application/json');
@@ -285,46 +329,53 @@ app.post('/',function(req,res){
         var urlStr = req.body.URL;
         console.log(urlStr);
         console.log(the_action);
-		var parsed = url.parse(urlStr);
-		var filename = querystring.unescape(path.basename(parsed.pathname));
-		if ( 'filename' in req.body){
-			filename = req.body.filename;
+    	var filename = null;
+		var dl_dir = req.cookies['cwd'];
+		console.log("download dir; " + dl_dir);
+		if ( dl_dir === undefined || dl_dir == ''){
+			dl_dir = '/';
 		}
-		console.log("filename:" + filename);
-        var new_job = {};
-        new_job['autorename'] = withAutoRename;
-        new_job['filename'] = filename;
-        var dl_dir = req.cookies['cwd'];
-        console.log("download dir; " + dl_dir);
-        if ( dl_dir === undefined || dl_dir == ''){
-            dl_dir = '/';
-        }
-        new_job['local_basedir'] = hiddenBaseDir + dl_dir
-        new_job['status'] = status
-        new_job['url'] = urlStr
-        new_job['totalLength'] = 0 //temp
-        new_job['tmpfilename'] = new_job["filename"] + ".aria2"
-        if ( withAutoRename == true || withAutoRename == 'true' ){
-			exec("python file_stats.py " + filename,{"cwd":"/opt/bitflux/src/backend"}, function(error,stdout,stderr){
-				filenameMatch = stdout.match(/^Filename: (.*)$/m);
-				if ( filenameMatch != null){
-					new_job['filename'] = filenameMatch[1];
-					new_job['tmpfilename'] = new_job["filename"] + ".aria2"
-				}else{
-					console.log("could not rename show");
-				}
-				console.log(stdout);
-				console.log(stderr);
-				addNewJob(new_job,req._rdbConn,function(error,msg){
-          res.send(JSON.stringify(({'action_performed':msg,'list':[] })));
-        });
-				//console.log(stdout.substring(loc,-1));
-			})
-        }else{
-            addNewJob(new_job,req._rdbConn,function(error,msg){
-              res.send(JSON.stringify(({'action_performed':msg,'list':[] })));
-            });
-        }
+        if (urlStr.endsWith("/")){
+            // download all items in directory
+            console.log('Attempting to scan directory for files');
+			process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+			var reqOptions = {url:urlStr,
+							auth:{
+									user:rutorrentUser,
+									password:rutorrentPass
+								}
+							}
+			request(reqOptions, function(err, resp, body){
+				$ = cheerio.load(body);
+				links = $('a'); // get all hyperlinks
+				var promises = [];
+				$(links).each(function(i, link){
+					console.log("Lnk found in directory: "+ $(link).text());
+					fileExtensions.forEach(function(fileExtension){
+						if ($(link).text().endsWith("." + fileExtension)){
+							var fullUrl = urlStr + $(link).attr('href');
+							console.log("Matching link found in directory: " + fullUrl);
+							var prom = new Promise(function(resolve,reject){
+								newDLRequest(fullUrl,null,withAutoRename,dl_dir,status,req._rdbConn,function(msg){
+									resolve(msg);
+								});
+							})
+							promises.push(prom);
+						}
+					})
+				})
+				Q.all(promises).then(function(data){
+					res.send(JSON.stringify(({'action_performed':'loaded directory','list':[] })));
+				});
+			});
+        } else { // download single item
+			if ( 'filename' in req.body){
+				filename = req.body.filename;
+			}
+			newDLRequest(urlStr,filename,withAutoRename,dl_dir,status,req._rdbConn,function(msg){
+				res.send(JSON.stringify(({'action_performed':msg,'list':[] })));
+			});
+	    }
   	}else if( 'Action' in req.body){
   		console.log("Do some action");
   		if ( 'stop' in req.body ){
@@ -474,7 +525,9 @@ app.post('/',function(req,res){
   			}
   		}
       if ( 'cleanup' in req.body ){
-        r.table("jobs").filter({"status": "complete" }).delete().run();
+        r.table("jobs").filter({"status": "complete" }).delete().run().then(function(ret){
+        	renumberJobs();
+        });
       }
 
 	}else{
@@ -528,10 +581,11 @@ app.get('/dlList/', function(req, res) {
 		    	var startIndex = req.query.start;
 		    	var limit = req.query.limit;
 		    	var pagedCombinedJobList = combinedJobList.slice(startIndex,startIndex + limit);
-		    	var dataObj = { 'count' : combinedJobList.length, 'total': combinedJobList.length,'downloads': combinedJobList }
+		    	var dataObj = { 'count' : pagedCombinedJobList.length, 'total': combinedJobList.length,'downloads': pagedCombinedJobList }
 		   		res.setHeader('Content-Type', 'application/json');
 		   		res.send(JSON.stringify(dataObj));   	
 		    }).catch(function(error){
+		    	// tbd, this needs to be handled better
 		    	console.log("An error occured retrieving job data");
 		    	console.dir(error);
 		    	if ( error.code == 1 ){ // this job is not in arai2 anymore
@@ -539,6 +593,9 @@ app.get('/dlList/', function(req, res) {
 		    		console.log("Adding gid " + gid + " to missing arai id list");
 		    		missingAraiIds[gid] = "";
 		    	}
+		    	var dataObj = { 'count' : 0, 'total': 0,'downloads': [] }
+		   		res.setHeader('Content-Type', 'application/json');
+		   		res.send(JSON.stringify(dataObj));   	
 		    });
 	}).error(function(err){
 		console.log(err);
@@ -647,6 +704,15 @@ var autodlnew = function(req,res){
 app.get('/autodlnew/',autodlnew);
 app.post('/autodlnew/',autodlnew);
 
+var autodldel = function(req,res){
+    var id = req.body.id;
+    r.table("autoDL").get(id).delete().run();
+   	res.setHeader('Content-Type', 'application/json');
+   	res.send(JSON.stringify("{}"));
+}
+app.get('/removeautodl/',autodldel);
+app.post('/removeautodl/',autodldel);
+
 var freeSpace = function(req,res){
     diskspace.check(hiddenBaseDir, function (err, total, free, status){
         var dataObj = { 'remaining' : convert_bytes(free)};
@@ -674,6 +740,59 @@ var newdir = function(req,res){
 }
 app.get('/newdir/',newdir);
 app.post('/newdir',newdir);
+
+var delentry = function(req,res){
+    var dirName = req.body.rmEntry;
+    if (dirName.length > 0){
+	    var fullDirName = hiddenBaseDir + dirName;
+	    if(fs.lstatSync(fullDirName).isDirectory()) {
+			var deleteFolderRecursive = function(path) {
+			  if( fs.existsSync(path) ) {
+			    fs.readdirSync(path).forEach(function(file,index){
+			      var curPath = path + "/" + file;
+			      if(fs.lstatSync(curPath).isDirectory()) { // recurse
+			        deleteFolderRecursive(curPath);
+			      } else { // delete file
+			        deleteIfExists(curPath);
+			      }
+			    });
+			    fs.rmdirSync(path);
+			  }
+			};
+			deleteFolderRecursive(fullDirName);
+	    } else {
+	        deleteIfExists(fullDirName);
+	    }
+	    res.setHeader('Content-Type', 'application/json');
+	    res.send(JSON.stringify("Deleted " + dirName));
+	} else {
+	    res.setHeader('Content-Type', 'application/json');
+	    res.send(JSON.stringify("Invalid path provided"));
+	}
+
+}
+app.get('/rmEntry/',delentry);
+app.post('/rmEntry/',delentry);
+
+
+var renameEntry = function(req,res){
+	var currentEntry = hiddenBaseDir + req.body.renameEntry;
+	var newName = req.body.newName;
+	var newEntry = path.dirname(currentEntry) + '/' + newName;
+	console.log("Renaming " + currentEntry + " to " + newEntry);
+	fs.rename(currentEntry,newEntry,function(error) {
+	    res.setHeader('Content-Type', 'application/json');
+	    if (error) {
+	        console.log(error);
+	        res.send(JSON.stringify("An error occurred attempting to rename"));
+	    } else {
+	    	res.send(JSON.stringify("Renamed successfully"));
+	    }
+	});
+
+}
+app.get('/renameEntry/',renameEntry);
+app.post('/renameEntry/',renameEntry);
 
 /*
  * Create tables/indexes then start express

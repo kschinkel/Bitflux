@@ -30,7 +30,8 @@ RUN gpg --keyserver pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4
 
 RUN mkdir /opt/bitflux
 COPY bitflux_process_manager.js /opt/bitflux/
-COPY src /opt/bitflux/src
+COPY src/ui /opt/bitflux/src/ui
+COPY src/backend /opt/bitflux/src/backend
 WORKDIR /opt/bitflux/src/backend
 RUN npm install .
 WORKDIR /

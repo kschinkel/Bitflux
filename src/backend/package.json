@@ -12,6 +12,8 @@
     "q":"1.4.x",
     "divmod":"0.0.x",
     "sleep":"5.1.x",
-    "diskspace":"1.0.x"
+    "diskspace":"1.0.x",
+    "request":"2.79.0",
+    "cheerio":"0.22.0"
   }
 }
