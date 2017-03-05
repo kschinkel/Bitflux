@@ -386,14 +386,18 @@ app.post('/',function(req,res){
   			for ( var i = 0; i < stopList.length; i++){
   				Q.all(r.table("jobs").filter({"nid": parseInt(stopList[i]) }).run()).then(function(jobs){
   						job = jobs[0];
-	  					aria2Client.pause(job['pid'],function(err,res){
-	  						if (err){
-	  							console.log("An error occurred attempting to stop job");
-	  							console.log(err);
-	  						}else{
-	  							console.log("Job stopped");
-	  						}
-	  					});
+  						if ( job['status'] == 'queued' || job['pid'] in missingAraiIds){
+  							r.table("jobs").get(job['id']).update({'status':'paused'}).run();
+  						} else {
+		  					aria2Client.pause(job['pid'],function(err,res){
+		  						if (err){
+		  							console.log("An error occurred attempting to stop job");
+		  							console.log(err);
+		  						}else{
+		  							console.log("Job stopped");
+		  						}
+		  					});
+	  					}
   				}).catch(function(error){
   					console.log("An error occurred retrieving job from db");
   					console.log(error);
