@@ -697,7 +697,12 @@ var autodlnew = function(req,res){
     auto_dl_entry['download_log'] = {}
     auto_dl_entry['season_to_start'] = season_start
     auto_dl_entry['episode_to_start'] = episode_start
-    r.table("autoDL").insert(auto_dl_entry).run();
+    var id = req.body.autoDL_id;
+    if (id != ''){
+    	r.table("autoDL").get(id).update(auto_dl_entry).run();
+    } else {
+    	r.table("autoDL").insert(auto_dl_entry).run();
+	}
    	res.setHeader('Content-Type', 'application/json');
    	res.send(JSON.stringify("{}"));
 }
