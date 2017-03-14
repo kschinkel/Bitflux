@@ -434,16 +434,19 @@ app.post('/',function(req,res){
 			  								console.log(err);
 			  							}else{
 			  								console.log('Job metadata removed from arai2');
-					  						r.table("jobs").filter({"nid": job['nid']}).delete().run().then(function(result){
+					  						r.table("jobs").filter({"nid": job['nid']}).delete({returnChanges: true}).run().then(function(result){
 					  							console.log("job deleted from DB");
 							  					if ( 'DelWData' in req.body ){
+						  							var filename = result['changes'][0]['old_val']['filename'];
+						  							var tmpfilename = result['changes'][0]['old_val']['tmpfilename'];
+						  							var local_basedir = result['changes'][0]['old_val']['local_basedir'];
 							  						console.log("Attempting to delete downloaded files; ");
-							  						console.log(job['local_basedir'] + "/" + job['filename']);
-							  						console.log(job['local_basedir'] + "/" + job['tmpfilename']);
-							  						deleteIfExists(job['local_basedir'] + "/" + job['filename']);
-							  						deleteIfExists(job['local_basedir'] + "/" + job['tmpfilename']);
+							  						console.log(local_basedir + "/" + filename);
+							  						console.log(local_basedir + "/" + tmpfilename);
+							  						deleteIfExists(local_basedir + "/" + filename);
+							  						deleteIfExists(local_basedir + "/" + tmpfilename);
 							  					}
-                          renumberJobs();
+											renumberJobs();
 							  				}).catch(function(err){
 				  								console.log("Failed to remove job from db");
 				  								console.log(err);			  							
@@ -451,13 +454,17 @@ app.post('/',function(req,res){
 					  					}
 			  						});
 		  						}else{
-			  						r.table("jobs").filter({"nid": job['nid']}).delete().run().then(function(result){
+			  						r.table("jobs").filter({"nid": job['nid']}).delete({returnChanges: true}).run().then(function(result){
 			  							console.log("job deleted from DB");
 					  					if ( 'DelWData' in req.body ){
+				  							var filename = result['changes'][0]['old_val']['filename'];
+				  							var tmpfilename = result['changes'][0]['old_val']['tmpfilename'];
+				  							var local_basedir = result['changes'][0]['old_val']['local_basedir'];
 					  						console.log("Attempting to delete downloaded files; ");
-					  						console.log(job['local_basedir'] + "/" + job['filename']);
-					  						deleteIfExists(job['local_basedir'] + "/" + job['filename']);
-					  						deleteIfExists(job['local_basedir'] + "/" + job['tmpfilename']);
+					  						console.log(local_basedir + "/" + filename);
+					  						console.log(local_basedir + "/" + tmpfilename);
+					  						deleteIfExists(local_basedir + "/" + filename);
+					  						deleteIfExists(local_basedir + "/" + tmpfilename);
 					  					}
                       renumberJobs();
 					  				}).catch(function(err){
@@ -467,13 +474,17 @@ app.post('/',function(req,res){
 		  						}
 		  					})
 	  					}else{ // job was not added to aria2 yet, so just remove it from the database
-	  						r.table("jobs").filter({"nid": job['nid']}).delete().run().then(function(result){
+	  						r.table("jobs").filter({"nid": job['nid']}).delete({returnChanges: true}).run().then(function(result){
 			  					console.log("job deleted from DB");
 			  					if ( 'DelWData' in req.body ){
+		  							var filename = result['changes'][0]['old_val']['filename'];
+		  							var tmpfilename = result['changes'][0]['old_val']['tmpfilename'];
+		  							var local_basedir = result['changes'][0]['old_val']['local_basedir'];
 			  						console.log("Attempting to delete downloaded files; ");
-			  						console.log(job['local_basedir'] + "/" + job['filename']);
-			  						deleteIfExists(job['local_basedir'] + "/" + job['filename']);
-			  						deleteIfExists(job['local_basedir'] + "/" + job['tmpfilename']);
+			  						console.log(local_basedir + "/" + filename);
+			  						console.log(local_basedir + "/" + tmpfilename);
+			  						deleteIfExists(local_basedir + "/" + filename);
+			  						deleteIfExists(local_basedir + "/" + tmpfilename);
 			  					}
                   renumberJobs();
 	  						}).catch(function(err){
