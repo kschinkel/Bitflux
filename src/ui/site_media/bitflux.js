@@ -671,8 +671,8 @@ Ext.onReady(function(){
                                     method: 'POST',
                                     params: postData,
                                     success: function(response, opts) {
-                                    //autoDLStore.reload();
-                                    var obj = Ext.decode(response.responseText);
+                                        autoDLStore.reload();
+                                        var obj = Ext.decode(response.responseText);
                                         //console.dir(obj);
                                     },
                                     failure: function(response, opts) {
@@ -874,6 +874,7 @@ Ext.onReady(function(){
         validResponse:function(form, action) {
             autoDLForm.getForm().reset();
             autoDLWindow.hide();
+            autoDLStore.reload();
         },
         buttons: [
             {text: 'Submit',
