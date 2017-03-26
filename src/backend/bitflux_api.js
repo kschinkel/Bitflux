@@ -714,10 +714,15 @@ var autodlnew = function(req,res){
     auto_dl_entry['episode_to_start'] = episode_start
     var id = req.body.autoDL_id;
     if (id != ''){
-    	r.table("autoDL").get(id).update(auto_dl_entry).run();
+        if (isFinite(id)){
+          id = parseInt(id,10);
+        }
+        console.log("Updating autoDL entry with id: " + id);
+        r.table("autoDL").get(id).update(auto_dl_entry).run();
     } else {
-    	r.table("autoDL").insert(auto_dl_entry).run();
-	}
+        console.log("Creating new autoDL entry; " + proper_name);
+        r.table("autoDL").insert(auto_dl_entry).run();
+    }
    	res.setHeader('Content-Type', 'application/json');
    	res.send(JSON.stringify("{}"));
 }
