@@ -211,8 +211,9 @@ var createLinkForDL = function(value, metaData, record) {
 
 updateDisplay = function() {
 	store.reload();
-	updateEngineStatus();
-	updateAutoDLerStatus();
+	// disabling these for now, as current backend does not support a active status
+    //updateEngineStatus();
+	//updateAutoDLerStatus();
 };
 
 aNewDL = function(action){

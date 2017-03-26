@@ -726,6 +726,10 @@ app.post('/autodlnew/',autodlnew);
 
 var autodldel = function(req,res){
     var id = req.body.id;
+    if (isFinite(id)){
+      id = parseInt(id,10);
+    }
+    console.log("attempting to delete audoDL entry with id: " + id);
     r.table("autoDL").get(id).delete().run();
    	res.setHeader('Content-Type', 'application/json');
    	res.send(JSON.stringify("{}"));
